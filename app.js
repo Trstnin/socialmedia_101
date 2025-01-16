@@ -25,6 +25,62 @@ app.get("/login", (req, res) => {
   res.render("login");
 });
 
+
+
+
+
+
+
+
+
+app.get("/logout", (req, res) => {
+  res.cookie("token", "");
+  res.redirect("/login");
+});
+
+app.get("/profile", isLoggedIn, async (req, res) => {
+  let user = await userModel
+    .findOne({ email: req.user.email })
+    .populate("posts");
+  res.render("profile", { user });
+});
+
+app.get("/like/:id", isLoggedIn, async (req, res) => {
+  let post = await postModel.findOne({ id: req.params._id }).populate("user");
+
+  if (post.likes.indexOf(req.user.userid) === -1) {
+    post.likes.push(req.user.userid);
+  } else {
+    post.likes.splice(req.user.userid, 1);
+  }
+
+  await post.save();
+  res.redirect("/profile");
+});
+
+app.get("/love/:id", isLoggedIn, async (req, res) => {
+  let post = await postModel.findOne({ id: req.params._id }).populate("user");
+  if(post.loves.indexOf(req.user.userid) === -1){
+    post.loves.push(req.user.userid);
+  }else{
+    post.loves.splice(req.user.userid, 1);
+  }
+   post.save();
+  res.redirect("/profile");
+});
+
+app.post("/post", isLoggedIn, async (req, res) => {
+  let user = await userModel.findOne({ email: req.user.email });
+  let { content } = req.body;
+  let posts = await postModel.create({
+    user: user._id,
+    content,
+  });
+  user.posts.push(posts._id);
+  await user.save();
+  res.redirect("/profile");
+});
+
 app.post("/create", async (req, res) => {
   let { fullname, email, age, password, username } = req.body;
   const Createduser = await userModel.findOne({ email });
@@ -41,7 +97,7 @@ app.post("/create", async (req, res) => {
       });
     });
   });
-  let token = jwt.sign({ email }, process.env.SECRET_JWT_TOKEN);
+  let token = jwt.sign({ email, fullname }, process.env.SECRET_JWT_TOKEN);
   res.cookie("token", token);
   res.send("User registered");
 });
@@ -51,38 +107,29 @@ app.post("/login", async (req, res) => {
   let user = await userModel.findOne({ email });
   if (!user) return res.status(200).send("Something went wrong ");
   bcrypt.compare(password, user.password, (err, result) => {
-    if (result)
-      {
-      let token = jwt.sign({ email }, process.env.SECRET_JWT_TOKEN);
+    if (result) {
+      let token = jwt.sign(
+        { email, userid: user._id },
+        process.env.SECRET_JWT_TOKEN
+      );
       res.cookie("token", token);
       return res.redirect("/profile");
-      } 
-
-    else return res.send("Something went wrong");
+    } else return res.send("Something went wrong");
   });
 });
 
-app.get('/logout', (req,res) => {
-   res.cookie('token', '')
-   res.redirect('/login')
-})
+function isLoggedIn(req, res, next) {
+  if (req.cookies.token === "") {
+    res.redirect("/login");
+  } else {
+    let data = jwt.verify(req.cookies.token, process.env.SECRET_JWT_TOKEN);
+    req.user = data;
+  }
 
-app.get('/profile', isLoggedIn ,async (req ,res) => {
- let user =   await userModel.findOne({email: req.user.email})
- console.log(user)
- res.render('profile', {user})
-} )
-
-function isLoggedIn(req,res,next){
-    if(req.cookies.token === ""){
-      res.redirect('/login')
-    }else {
-     let data =  jwt.verify(req.cookies.token , process.env.SECRET_JWT_TOKEN);
-     req.user = data
-    }
-  
-  next()
+  next();
 }
+
+
 
 app.listen(port, () => {
   console.log(`app is listen is listening at port ${port}`);

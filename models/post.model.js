@@ -4,8 +4,9 @@ mongoose.connect("mongodb://127.0.0.1:27017/socialApp");
 const postSchema = mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    constent: String,
+    content: String,
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
+    loves: [{ type: mongoose.Schema.Types.ObjectId, ref: "user"}]
   },
   { timestamps: true }
 );
