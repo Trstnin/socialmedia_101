@@ -10,7 +10,7 @@ const cookieParser = require("cookie-parser");
 const path = require("path");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { render } = require("ejs");
+const upload = require("./utils/multer.js")
 
 //middlewares
 
@@ -62,13 +62,14 @@ app.get("/love/:id", isLoggedIn, async (req, res) => {
   }else{
     post.loves.splice(req.user.userid, 1);
   }
-   post.save();
+ await post.save();
   res.redirect("/profile");
 });
 
 app.get('/edit/:id', isLoggedIn, async (req,res) => {
   let post = await postModel.findOne({_id: req.params.id})
   res.render('edit', {post})
+  
 })
 
 app.get('/delete/:id', isLoggedIn, async (req,res)=> {
@@ -76,6 +77,9 @@ app.get('/delete/:id', isLoggedIn, async (req,res)=> {
  res.redirect('/profile')
 } )
 
+app.get('/profile/upload', isLoggedIn, (req,res) => {
+  res.render('profileUpload')
+})
 
 //post items
 
@@ -135,6 +139,15 @@ app.post('/update/:id', isLoggedIn, async(req,res) => {
 
      res.redirect('/profile')
 })
+
+app.post('/upload', isLoggedIn  ,upload.single('image') ,async (req,res)=>{
+  let user = await userModel.findOne({email: req.user.email})
+  user. profilePic = req.file.filename
+  user.save();
+  res.redirect('/profile')
+})
+
+
 //self made middleware
 function isLoggedIn(req, res, next) {
   if (req.cookies.token === "") {
