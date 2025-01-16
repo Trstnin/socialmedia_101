@@ -10,6 +10,9 @@ const cookieParser = require("cookie-parser");
 const path = require("path");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { render } = require("ejs");
+
+//middlewares
 
 app.set("view engine", "ejs");
 app.use(express.json());
@@ -17,6 +20,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
 
+
+//get items
 app.get("/", (req, res) => {
   res.render("index");
 });
@@ -24,14 +29,6 @@ app.get("/", (req, res) => {
 app.get("/login", (req, res) => {
   res.render("login");
 });
-
-
-
-
-
-
-
-
 
 app.get("/logout", (req, res) => {
   res.cookie("token", "");
@@ -68,6 +65,19 @@ app.get("/love/:id", isLoggedIn, async (req, res) => {
    post.save();
   res.redirect("/profile");
 });
+
+app.get('/edit/:id', isLoggedIn, async (req,res) => {
+  let post = await postModel.findOne({_id: req.params.id})
+  res.render('edit', {post})
+})
+
+app.get('/delete/:id', isLoggedIn, async (req,res)=> {
+ let post = await postModel.findOneAndDelete({_id: req.params.id});
+ res.redirect('/profile')
+} )
+
+
+//post items
 
 app.post("/post", isLoggedIn, async (req, res) => {
   let user = await userModel.findOne({ email: req.user.email });
@@ -118,6 +128,14 @@ app.post("/login", async (req, res) => {
   });
 });
 
+app.post('/update/:id', isLoggedIn, async(req,res) => {
+  await postModel.findOneAndUpdate({_id: req.params.id}, {
+    content: req.body.content
+   })
+
+     res.redirect('/profile')
+})
+//self made middleware
 function isLoggedIn(req, res, next) {
   if (req.cookies.token === "") {
     res.redirect("/login");
